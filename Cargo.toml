@@ -1,0 +1,13 @@
+[package]
+name = "hamstercsv"
+version = "0.1.0"
+authors = ["Konrad Siek <konrad.siek@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+csv = "1.1.6"
+clap = "3.0.0-beta.2"
+cursive = "0.16.3"
+serde = "1.0.126"
