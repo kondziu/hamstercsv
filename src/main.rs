@@ -5,6 +5,7 @@ use std::fmt::Formatter;
 use std::fmt::Display;
 use csv;
 use clap::Clap;
+use ncurses;
 
 use std::path::PathBuf;
 
@@ -99,7 +100,7 @@ impl Into<u8> for &AsciiCharacter {
 
 #[derive(Debug)]
 struct AsciiCharacterParseError(String);
-impl Display for AsciiCharacterParseError {
+impl std::fmt::Display for AsciiCharacterParseError {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> { 
         write!(f, "Invalid character value \"{}\": expected a single character. Multi-byte characters are not supported.", self.0)
     }
@@ -128,7 +129,7 @@ impl Into<csv::Terminator> for Terminator {
 
 #[derive(Debug)]
 struct TerminatorParseError(String);
-impl Display for TerminatorParseError {
+impl std::fmt::Display for TerminatorParseError {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> { 
         write!(f, "Invalid terminator \"{}\": terminators must be a single character or \"CRLF\", \"crlf\", or \"default\".", self.0)
     }
@@ -198,7 +199,11 @@ impl CSV {
         self.columns.push(CSVColumn::from_header(header));
     }
 
-    fn get_column(&mut self, column_index: usize) -> &mut CSVColumn {
+    fn get_column(&self, column_index: usize) -> Option<&CSVColumn> {
+        return self.columns.get(column_index)
+    }
+
+    fn get_column_mut(&mut self, column_index: usize) -> &mut CSVColumn {
         while column_index >= self.columns.len() {
             self.columns.push(CSVColumn::new());            
         } 
@@ -222,7 +227,7 @@ impl<R> From<csv::Reader<R>> for CSV where R: std::io::Read {
         for (row_index, row) in reader.records().into_iter().enumerate() {
             let row = row.expect(&format!("Error reading row {} in CSV file", row_index));
             for (column_index, value) in row.into_iter().enumerate() {                
-                csv.get_column(column_index).set_value(row_index, value.to_owned());
+                csv.get_column_mut(column_index).set_value(row_index, value.to_owned());
             }
         }
 
@@ -230,11 +235,43 @@ impl<R> From<csv::Reader<R>> for CSV where R: std::io::Read {
     }
 }
 
+static COLOR_VALUES_BACKGROUND: i16 = 16;
+static COLOR_VALUES_FOREGROUND: i16 = 17;
+static COLOR_HEADER_FOREGROUND: i16 = 18;
+static COLOR_HEADER_BACKGROUND: i16 = 19;
+
+static COLOR_VALUES_PAIR: i16 = 1;
+static COLOR_HEADER_PAIR: i16 = 1;
+
+struct Screen {}
+impl Screen {
+    pub fn initialize() {
+        ncurses::initscr();
+        ncurses::keypad(ncurses::stdscr(), true);
+        ncurses::noecho();
+
+        ncurses::start_color();
+        ncurses::init_color(COLOR_HEADER_FOREGROUND, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_HEADER_BACKGROUND, 142 * 4, 161 * 4, 161 * 4);    
+        ncurses::init_color(COLOR_VALUES_BACKGROUND, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_VALUES_FOREGROUND, 142 * 4, 161 * 4, 161 * 4);    
+
+        ncurses::init_pair(COLOR_HEADER_PAIR, COLOR_HEADER_FOREGROUND, COLOR_HEADER_BACKGROUND);
+        ncurses::init_pair(COLOR_VALUES_PAIR, COLOR_VALUES_FOREGROUND, COLOR_VALUES_BACKGROUND);
+
+        ncurses::bkgd(' ' as ncurses::chtype | ncurses::COLOR_PAIR(COLOR_VALUES_PAIR) as ncurses::chtype);
+    }
+}
+
 fn main() {
     let options = Options::parse();
     let csv = CSV::from(options.build_reader());
 
-    println!("{:?}", csv);
+    Screen::initialize();
+
+    let column = csv.get_column(0);
+
+    //println!("{:?}", csv);
 
     // println!("{:?}", reader.headers());
     // for row in reader.records() {
