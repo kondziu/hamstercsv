@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::error::Error;
+//use std::error::Error;
 use std::str::FromStr;
 use std::fmt::Formatter;
 use std::fmt::Display;
@@ -177,8 +177,11 @@ impl CSVColumn {
         } 
         self.values[index] = value;
     }
-    fn get_value(&mut self, index: usize) -> Option<&String> {
+    fn get_value(&self, index: usize) -> Option<&String> {
         self.values.get(index)
+    }    
+    pub fn values(&self) -> impl Iterator<Item=&String> {
+        self.values.iter()
     }
 }
 
@@ -241,42 +244,157 @@ static COLOR_HEADER_FOREGROUND: i16 = 18;
 static COLOR_HEADER_BACKGROUND: i16 = 19;
 
 static COLOR_VALUES_PAIR: i16 = 1;
-static COLOR_HEADER_PAIR: i16 = 1;
+static COLOR_HEADER_PAIR: i16 = 2;
 
-struct Screen {}
-impl Screen {
-    pub fn initialize() {
+struct CSVDisplay {
+    column: usize,
+    row: usize,
+
+    column_width: usize, // Invariant: > 0 & <= screen_width
+    row_height: usize,   // Invariant: > 0 & <= screen_height - 2
+
+    screen_height: usize, 
+    screen_width: usize,
+    
+    csv: CSV,    
+}
+impl CSVDisplay {
+    pub fn from(csv: CSV) -> Self {
+
         ncurses::initscr();
         ncurses::keypad(ncurses::stdscr(), true);
         ncurses::noecho();
 
-        ncurses::start_color();
-        ncurses::init_color(COLOR_HEADER_FOREGROUND, 0, 43 * 4, 54 * 4);
-        ncurses::init_color(COLOR_HEADER_BACKGROUND, 142 * 4, 161 * 4, 161 * 4);    
-        ncurses::init_color(COLOR_VALUES_BACKGROUND, 0, 43 * 4, 54 * 4);
-        ncurses::init_color(COLOR_VALUES_FOREGROUND, 142 * 4, 161 * 4, 161 * 4);    
+        // ncurses::start_color();
+        // ncurses::init_color(COLOR_HEADER_FOREGROUND, 0, 43 * 4, 54 * 4);
+        // ncurses::init_color(COLOR_HEADER_BACKGROUND, 142 * 4, 161 * 4, 161 * 4);    
+        // ncurses::init_color(COLOR_VALUES_BACKGROUND, 0, 43 * 4, 54 * 4);
+        // ncurses::init_color(COLOR_VALUES_FOREGROUND, 142 * 4, 161 * 4, 161 * 4);    
 
-        ncurses::init_pair(COLOR_HEADER_PAIR, COLOR_HEADER_FOREGROUND, COLOR_HEADER_BACKGROUND);
-        ncurses::init_pair(COLOR_VALUES_PAIR, COLOR_VALUES_FOREGROUND, COLOR_VALUES_BACKGROUND);
+        // ncurses::init_pair(COLOR_HEADER_PAIR, COLOR_HEADER_FOREGROUND, COLOR_HEADER_BACKGROUND);
+        // ncurses::init_pair(COLOR_VALUES_PAIR, COLOR_VALUES_FOREGROUND, COLOR_VALUES_BACKGROUND);
 
-        ncurses::bkgd(' ' as ncurses::chtype | ncurses::COLOR_PAIR(COLOR_VALUES_PAIR) as ncurses::chtype);
+        // ncurses::bkgd(' ' as ncurses::chtype | ncurses::COLOR_PAIR(COLOR_VALUES_PAIR) as ncurses::chtype);
+
+        let mut screen_height: i32 = 0;
+        let mut screen_width: i32 = 0;
+        ncurses::getmaxyx(ncurses::stdscr(), &mut screen_height, &mut screen_width);
+
+        ncurses::clear();
+
+        CSVDisplay { 
+            csv, 
+
+            row: 0, 
+            column: 0, 
+
+            column_width: 10, 
+            row_height: 1, 
+
+            screen_height: screen_height as usize, 
+            screen_width: screen_width as usize,
+        }
+    }
+
+    fn print_header(&self, _text: &str) {
+
+    }
+
+    fn print_cell(&self, _text: &str) {
+
+    }
+
+    fn print_status(&self) {
+        
+    }
+
+    pub fn run(&mut self) {
+
+        let how_many_columns_visible = self.screen_width / self.column_width;
+        let how_many_rows_visible = self.screen_height / self.row_height - 1 /* headers */ - 1 /* status bar */; 
+
+        let first_column = self.column;
+        let last_column = self.column + how_many_columns_visible;
+
+        let first_row = self.row;
+        let last_row = std::cmp::min(self.row + how_many_rows_visible, self.csv.columns.len());
+
+        println!("{}", first_row);
+        println!("{}", last_row);
+
+        let mut visible_columns: Vec<&CSVColumn> = Vec::new();
+        for column_index in first_column..last_column {
+            if let Some(column) = self.csv.get_column(column_index) {
+                visible_columns.push(column)
+            }
+        }
+
+
+
+        for row_index in first_row..last_row {
+            let column = visible_columns[row_index];
+            ncurses::mv(0, (row_index * self.column_width) as i32);
+            ncurses::addstr(column.header.as_str());
+        }
+
+        let empty = String::new();
+        for line in 1..self.screen_height - 1{
+            for row_index in first_row..last_row {
+                let column = visible_columns[row_index];
+                let value = column.get_value(line - 1).unwrap_or(&empty);
+                ncurses::mv(line as i32, (row_index * self.column_width) as i32);
+                ncurses::addstr(value);
+            }
+        }
+
+        //self.print_status();        
+
+        while ncurses::getch() != ' ' as i32 { }
+    }
+}
+
+impl Drop for CSVDisplay {
+    fn drop(&mut self) {
+        ncurses::endwin();
     }
 }
 
 fn main() {
     let options = Options::parse();
+    println!("hello1");
     let csv = CSV::from(options.build_reader());
+    println!("hello2");
+    { let mut display = CSVDisplay::from(csv);
+    println!("hello3");
+    display.run(); }
+    println!("hello4"); 
 
-    Screen::initialize();
 
-    let column = csv.get_column(0);
 
+    // let column = csv.get_column(0).unwrap();
+
+    // for value in column.values() {
+    //     //ncurses::attron(ncurses::COLOR_PAIR(COLOR_VALUES_PAIR));
+    //     ncurses::addstr(value);
+    //     ncurses::mv()
+    //     //ncurses::attroff(ncurses::COLOR_PAIR(COLOR_VALUES_PAIR));
+    // }
+
+    // //ncurses::attron(ncurses::A_BOLD());
+    // ncurses::addstr("<-Press Space->");
+    // while ncurses::getch() != ' ' as i32
+    // { }
+    //ncurses::attroff(ncurses::A_BOLD());
+    
     //println!("{:?}", csv);
 
     // println!("{:?}", reader.headers());
     // for row in reader.records() {
     //     println!("{:?}", row);
     // }
-    
+
+    // End procedure:
+    //ncurses::mv(self.screen_height - 1, 0);
+    //ncurses::prompt();
 }
 
