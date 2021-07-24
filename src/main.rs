@@ -45,6 +45,9 @@ struct Options {
     #[clap(long)]
     each_row_same_length: bool, // flexible length records by default by default
 
+    #[clap(long, default_value("en_US.UTF-8"))]
+    locale: String,
+
     path: PathBuf,
 }
 
@@ -260,24 +263,24 @@ struct CSVDisplay {
     csv: CSV,    
 }
 impl CSVDisplay {
-    pub fn from(csv: CSV) -> Self {
+    pub fn from(csv: CSV, options: &Options) -> Self {
 
-        ncurses::setlocale(ncurses::LcCategory::all, "en_US.UTF-8"); // TODO make configurable
+        ncurses::setlocale(ncurses::LcCategory::all, options.locale.as_str()); // TODO is this actually configurable to any reasonable extent?
 
         ncurses::initscr();
         ncurses::keypad(ncurses::stdscr(), true);
         ncurses::noecho();
 
-        // ncurses::start_color();
-        // ncurses::init_color(COLOR_HEADER_FOREGROUND, 0, 43 * 4, 54 * 4);
-        // ncurses::init_color(COLOR_HEADER_BACKGROUND, 142 * 4, 161 * 4, 161 * 4);    
-        // ncurses::init_color(COLOR_VALUES_BACKGROUND, 0, 43 * 4, 54 * 4);
-        // ncurses::init_color(COLOR_VALUES_FOREGROUND, 142 * 4, 161 * 4, 161 * 4);    
+        ncurses::start_color();
+        ncurses::init_color(COLOR_HEADER_FOREGROUND, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_HEADER_BACKGROUND, 142 * 4, 161 * 4, 161 * 4);    
+        ncurses::init_color(COLOR_VALUES_BACKGROUND, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_VALUES_FOREGROUND, 142 * 4, 161 * 4, 161 * 4);    
 
-        // ncurses::init_pair(COLOR_HEADER_PAIR, COLOR_HEADER_FOREGROUND, COLOR_HEADER_BACKGROUND);
-        // ncurses::init_pair(COLOR_VALUES_PAIR, COLOR_VALUES_FOREGROUND, COLOR_VALUES_BACKGROUND);
+        ncurses::init_pair(COLOR_HEADER_PAIR, COLOR_HEADER_FOREGROUND, COLOR_HEADER_BACKGROUND);
+        ncurses::init_pair(COLOR_VALUES_PAIR, COLOR_VALUES_FOREGROUND, COLOR_VALUES_BACKGROUND);
 
-        // ncurses::bkgd(' ' as ncurses::chtype | ncurses::COLOR_PAIR(COLOR_VALUES_PAIR) as ncurses::chtype);
+        ncurses::bkgd(' ' as ncurses::chtype | ncurses::COLOR_PAIR(COLOR_VALUES_PAIR) as ncurses::chtype);
 
         let mut screen_height: i32 = 0;
         let mut screen_width: i32 = 0;
@@ -297,18 +300,6 @@ impl CSVDisplay {
             screen_height: screen_height as usize, 
             screen_width: screen_width as usize,
         }
-    }
-
-    fn print_header(&self, _text: &str) {
-
-    }
-
-    fn print_cell(&self, _text: &str) {
-
-    }
-
-    fn print_status(&self) {
-        
     }
 
     fn format_cell(&self, text: &str) -> String {
@@ -350,14 +341,16 @@ impl CSVDisplay {
         for column_index in first_column..last_column {
             if let Some(column) = self.csv.get_column(column_index) {
                 ncurses::attron(ncurses::A_BOLD());
+                ncurses::attron(ncurses::COLOR_PAIR(COLOR_HEADER_PAIR));
                 ncurses::mv(0, (column_index * self.column_width) as i32);
-                ncurses::addstr(column.header.as_str());
+                ncurses::addnstr(column.header.as_str(), self.column_width as i32);                
                 ncurses::attroff(ncurses::A_BOLD());
+                ncurses::attroff(ncurses::COLOR_PAIR(COLOR_HEADER_PAIR));
 
                 for line in 1..self.screen_height - 1 {
                     let value = column.get_value(line - 1).unwrap_or(&empty);
                     ncurses::mv(line as i32, (column_index * self.column_width) as i32);
-                    ncurses::addstr(self.format_cell(value).as_str());
+                    ncurses::addnstr(self.format_cell(value).as_str(), self.column_width as i32);
                 }
             }
         }       
@@ -375,7 +368,7 @@ impl Drop for CSVDisplay {
 fn main() {
     let options = Options::parse();
     let csv = CSV::from(options.build_reader());
-    let mut display = CSVDisplay::from(csv);    
+    let mut display = CSVDisplay::from(csv, &options);    
     display.run();
 
     // let column = csv.get_column(0).unwrap();
