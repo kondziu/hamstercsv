@@ -6,6 +6,7 @@ use std::fmt::Display;
 use csv;
 use clap::Clap;
 use ncurses;
+use unicode_segmentation::UnicodeSegmentation;
 
 use std::path::PathBuf;
 
@@ -261,6 +262,8 @@ struct CSVDisplay {
 impl CSVDisplay {
     pub fn from(csv: CSV) -> Self {
 
+        ncurses::setlocale(ncurses::LcCategory::all, "en_US.UTF-8"); // TODO make configurable
+
         ncurses::initscr();
         ncurses::keypad(ncurses::stdscr(), true);
         ncurses::noecho();
@@ -308,6 +311,27 @@ impl CSVDisplay {
         
     }
 
+    fn format_cell(&self, text: &str) -> String {
+        let mut cell = String::new();
+        let mut width = 0usize;
+
+        for grapheme in text.graphemes(true) { // TODO make configurable
+            if grapheme == "\n" || grapheme == "\r" {
+                break;
+            }
+
+            if width == self.column_width - 2 {
+                cell.push_str(&format!("… "));
+                break;   
+            }
+
+            cell.push_str(grapheme);
+            width += 1;         
+        }
+        
+        cell
+    }
+
     pub fn run(&mut self) {
 
         let how_many_columns_visible = self.screen_width / self.column_width;
@@ -322,34 +346,23 @@ impl CSVDisplay {
         println!("{}", first_row);
         println!("{}", last_row);
 
-        let mut visible_columns: Vec<&CSVColumn> = Vec::new();
+        let empty = String::new();
         for column_index in first_column..last_column {
             if let Some(column) = self.csv.get_column(column_index) {
-                visible_columns.push(column)
+                ncurses::attron(ncurses::A_BOLD());
+                ncurses::mv(0, (column_index * self.column_width) as i32);
+                ncurses::addstr(column.header.as_str());
+                ncurses::attroff(ncurses::A_BOLD());
+
+                for line in 1..self.screen_height - 1 {
+                    let value = column.get_value(line - 1).unwrap_or(&empty);
+                    ncurses::mv(line as i32, (column_index * self.column_width) as i32);
+                    ncurses::addstr(self.format_cell(value).as_str());
+                }
             }
-        }
+        }       
 
-
-
-        for row_index in first_row..last_row {
-            let column = visible_columns[row_index];
-            ncurses::mv(0, (row_index * self.column_width) as i32);
-            ncurses::addstr(column.header.as_str());
-        }
-
-        let empty = String::new();
-        for line in 1..self.screen_height - 1{
-            for row_index in first_row..last_row {
-                let column = visible_columns[row_index];
-                let value = column.get_value(line - 1).unwrap_or(&empty);
-                ncurses::mv(line as i32, (row_index * self.column_width) as i32);
-                ncurses::addstr(value);
-            }
-        }
-
-        //self.print_status();        
-
-        while ncurses::getch() != ' ' as i32 { }
+        while ncurses::getch() != 'q' as i32 { }
     }
 }
 
@@ -361,15 +374,9 @@ impl Drop for CSVDisplay {
 
 fn main() {
     let options = Options::parse();
-    println!("hello1");
     let csv = CSV::from(options.build_reader());
-    println!("hello2");
-    { let mut display = CSVDisplay::from(csv);
-    println!("hello3");
-    display.run(); }
-    println!("hello4"); 
-
-
+    let mut display = CSVDisplay::from(csv);    
+    display.run();
 
     // let column = csv.get_column(0).unwrap();
 
