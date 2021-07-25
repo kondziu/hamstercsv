@@ -1,14 +1,19 @@
 use std::fs::File;
-//use std::error::Error;
 use std::str::FromStr;
 use std::fmt::Formatter;
 use std::fmt::Display;
+use std::path::PathBuf;
+
 use csv;
-use clap::Clap;
 use ncurses;
+
+use clap::Clap;
+
+use hamstercsv::csv::*;
 use unicode_segmentation::UnicodeSegmentation;
 
-use std::path::PathBuf;
+use log;
+
 
 // TODO add `about(...)`s
 // TODO maybe stdin support
@@ -161,85 +166,8 @@ impl Options {
     }
 }
 
-#[derive(Debug)]
-struct CSVColumn {
-    header: String,
-    values: Vec<String>,
-    // type?
-}
+enum ColorScheme {
 
-impl CSVColumn {
-    pub fn new() -> Self {
-        CSVColumn { header: String::default(), values: Vec::new() }
-    }
-    pub fn from_header(header: String) -> Self {
-        CSVColumn { header, values: Vec::new() }
-    }
-    fn set_value(&mut self, index: usize, value: String) {
-        while index >= self.values.len() {
-            self.values.push(String::default());            
-        } 
-        self.values[index] = value;
-    }
-    fn get_value(&self, index: usize) -> Option<&String> {
-        self.values.get(index)
-    }    
-    pub fn values(&self) -> impl Iterator<Item=&String> {
-        self.values.iter()
-    }
-}
-
-#[derive(Debug)]
-struct CSV {
-    columns: Vec<CSVColumn>,
-}
-
-impl CSV {
-    pub fn new() -> Self {
-        CSV { columns: Vec::new() }
-    }
-    // fn get_or_create_column(column_index header: String) {
-    //     if 
-    // }
-
-    fn new_column(&mut self, header: String) {        
-        self.columns.push(CSVColumn::from_header(header));
-    }
-
-    fn get_column(&self, column_index: usize) -> Option<&CSVColumn> {
-        return self.columns.get(column_index)
-    }
-
-    fn get_column_mut(&mut self, column_index: usize) -> &mut CSVColumn {
-        while column_index >= self.columns.len() {
-            self.columns.push(CSVColumn::new());            
-        } 
-        return &mut self.columns[column_index]
-    }
-}
-
-impl<R> From<csv::Reader<R>> for CSV where R: std::io::Read {
-    fn from(mut reader: csv::Reader<R>) -> Self { 
-
-        let mut csv = CSV::new();
-
-        if reader.has_headers() {
-            let headers = reader.headers()
-                .expect("Error reading CSV file");      
-            for header in headers {
-                csv.new_column(header.to_owned());
-            }
-        }
-            
-        for (row_index, row) in reader.records().into_iter().enumerate() {
-            let row = row.expect(&format!("Error reading row {} in CSV file", row_index));
-            for (column_index, value) in row.into_iter().enumerate() {                
-                csv.get_column_mut(column_index).set_value(row_index, value.to_owned());
-            }
-        }
-
-        csv
-    }
 }
 
 static COLOR_FOREGROUND: i16 = 24;
@@ -273,10 +201,10 @@ struct CSVDisplay {
     screen_height: usize, 
     screen_width: usize,
     
-    csv: CSV,    
+    csv: CSVFile,    
 }
 impl CSVDisplay {
-    pub fn from(csv: CSV, options: &Options) -> Self {
+    pub fn from(csv: CSVFile, options: &Options) -> Self {
 
         ncurses::setlocale(ncurses::LcCategory::all, options.locale.as_str()); // TODO is this actually configurable to any reasonable extent?
 
@@ -330,34 +258,6 @@ impl CSVDisplay {
         }
     }
 
-    fn format_cell(&self, text: &str) -> String {
-        let mut cell = String::with_capacity(self.column_width);
-        let mut width = 0usize;
-        let graphemes: Vec<&str> = text.graphemes(true).collect();
-        let grapheme_count = graphemes.len();
-
-        for grapheme in graphemes { // TODO make configurable
-            if grapheme == "\n" || grapheme == "\r" {
-                break;
-            }
-
-            if width >= self.column_width - 2 && grapheme_count > self.column_width - 1 {
-                cell.push_str(&format!("…"));
-                break;   
-            }
-
-            cell.push_str(grapheme);
-            width += 1;
-        }
-
-        while width < self.column_width {
-            cell.push(' ');
-            width += 1;
-        }
-        
-        cell
-    }
-
     pub fn run(&mut self) {
 
         let how_many_columns_visible = self.screen_width / self.column_width;
@@ -367,34 +267,39 @@ impl CSVDisplay {
         let last_column = self.column + how_many_columns_visible;
 
         let first_row = self.row;
-        let last_row = std::cmp::min(self.row + how_many_rows_visible, self.csv.columns.len());
+        let last_row = std::cmp::min(self.row + how_many_rows_visible, self.csv.column_count());
 
         println!("{}", first_row);
         println!("{}", last_row);
 
-        let empty = String::new();
+        let cell_dimensions = CellDimentions { width: self.column_width - 1, height: 1 };
+
+        //let empty = CSVItem::default();
         for column_index in first_column..last_column {
-
-
 
             if let Some(column) = self.csv.get_column(column_index) {
 
-                ncurses::attron(ncurses::A_BOLD());
-                
+                ncurses::attron(ncurses::A_BOLD());                
                 ncurses::attron(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_HEADER_PAIR_EVEN } else { COLOR_HEADER_PAIR_ODD }));
                 
                 ncurses::mv(0, (column_index * self.column_width) as i32);
-                ncurses::addnstr(self.format_cell(column.header.as_str()).as_str(), self.column_width as i32);                
-                ncurses::attroff(ncurses::A_BOLD());
                 
+                ncurses::addstr(column.header().to_owned().cut_or_pad_to(cell_dimensions.width, " ").join("").as_str());
+                ncurses::addstr(" ");
+                
+                ncurses::attroff(ncurses::A_BOLD());                
                 ncurses::attroff(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_HEADER_PAIR_EVEN } else { COLOR_HEADER_PAIR_ODD }));
-
                 ncurses::attron(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_VALUES_PAIR_EVEN } else { COLOR_VALUES_PAIR_ODD }));
+                
                 for line in 1..(self.screen_height - 1) {
-                    let value = column.get_value(first_row + line - 1).unwrap_or(&empty);
+                    let rows = column.value(first_row + line - 1)
+                        .map_or_else(Vec::new, |item| item.cut_or_pad_to(cell_dimensions, " "));
                     ncurses::mv(line as i32, (column_index * self.column_width) as i32);
-                    let string = self.format_cell(value);
-                    ncurses::addstr(string.as_str());
+                    for row in rows {
+                        ncurses::addstr(row.join("").as_str());
+                        ncurses::addstr(" ");
+                        //ncurses::addstr("value");
+                    }                    
                 }
                 ncurses::attroff(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_VALUES_PAIR_EVEN } else { COLOR_VALUES_PAIR_ODD }));
             }
@@ -414,9 +319,14 @@ impl Drop for CSVDisplay {
 }
 
 fn main() {
+    simple_logging::log_to_file("hamstercsv.log", log::LevelFilter::Info);
+
     let options = Options::parse();
-    let csv = CSV::from(options.build_reader());
+    println!("...0");
+    let csv = CSVFile::from(options.build_reader());
+    println!("...1");
     let mut display = CSVDisplay::from(csv, &options);    
+    println!("...2");
     display.run();
 
     // let column = csv.get_column(0).unwrap();
