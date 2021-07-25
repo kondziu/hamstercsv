@@ -242,13 +242,26 @@ impl<R> From<csv::Reader<R>> for CSV where R: std::io::Read {
     }
 }
 
-static COLOR_VALUES_BACKGROUND: i16 = 16;
-static COLOR_VALUES_FOREGROUND: i16 = 17;
-static COLOR_HEADER_FOREGROUND: i16 = 18;
-static COLOR_HEADER_BACKGROUND: i16 = 19;
+static COLOR_FOREGROUND: i16 = 24;
+static COLOR_BACKGROUND: i16 = 25;
 
-static COLOR_VALUES_PAIR: i16 = 1;
-static COLOR_HEADER_PAIR: i16 = 2;
+static COLOR_VALUES_BACKGROUND_EVEN: i16 = 16;
+static COLOR_VALUES_FOREGROUND_EVEN: i16 = 17;
+
+static COLOR_HEADER_FOREGROUND_EVEN: i16 = 18;
+static COLOR_HEADER_BACKGROUND_EVEN: i16 = 19;
+
+static COLOR_VALUES_BACKGROUND_ODD: i16 = 20;
+static COLOR_VALUES_FOREGROUND_ODD: i16 = 21;
+
+static COLOR_HEADER_FOREGROUND_ODD: i16 = 22;
+static COLOR_HEADER_BACKGROUND_ODD: i16 = 23;
+
+static COLOR_PAIR: i16 = 1;
+static COLOR_VALUES_PAIR_EVEN: i16 = 2;
+static COLOR_HEADER_PAIR_EVEN: i16 = 3;
+static COLOR_VALUES_PAIR_ODD: i16 = 4;
+static COLOR_HEADER_PAIR_ODD: i16 = 5;
 
 struct CSVDisplay {
     column: usize,
@@ -272,19 +285,34 @@ impl CSVDisplay {
         ncurses::noecho();
 
         ncurses::start_color();
-        ncurses::init_color(COLOR_HEADER_FOREGROUND, 0, 43 * 4, 54 * 4);
-        ncurses::init_color(COLOR_HEADER_BACKGROUND, 142 * 4, 161 * 4, 161 * 4);    
-        ncurses::init_color(COLOR_VALUES_BACKGROUND, 0, 43 * 4, 54 * 4);
-        ncurses::init_color(COLOR_VALUES_FOREGROUND, 142 * 4, 161 * 4, 161 * 4);    
 
-        ncurses::init_pair(COLOR_HEADER_PAIR, COLOR_HEADER_FOREGROUND, COLOR_HEADER_BACKGROUND);
-        ncurses::init_pair(COLOR_VALUES_PAIR, COLOR_VALUES_FOREGROUND, COLOR_VALUES_BACKGROUND);
+        ncurses::init_color(COLOR_FOREGROUND, 100 * 4, 100 * 4, 100 * 4);
+        ncurses::init_color(COLOR_BACKGROUND, 100 * 4, 100 * 4, 100 * 4);
+        ncurses::init_pair (COLOR_PAIR, COLOR_FOREGROUND, COLOR_BACKGROUND);
 
-        ncurses::bkgd(' ' as ncurses::chtype | ncurses::COLOR_PAIR(COLOR_VALUES_PAIR) as ncurses::chtype);
+        ncurses::init_color(COLOR_HEADER_FOREGROUND_EVEN, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_HEADER_BACKGROUND_EVEN, 142 * 4, 161 * 4, 161 * 4);    
+        ncurses::init_pair (COLOR_HEADER_PAIR_EVEN, COLOR_HEADER_FOREGROUND_EVEN, COLOR_HEADER_BACKGROUND_EVEN);
+
+        ncurses::init_color(COLOR_VALUES_BACKGROUND_EVEN, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_VALUES_FOREGROUND_EVEN, 55 * 4, 109 * 4, 114 * 4);
+        ncurses::init_pair (COLOR_VALUES_PAIR_EVEN, COLOR_VALUES_FOREGROUND_EVEN, COLOR_VALUES_BACKGROUND_EVEN);  
+
+        ncurses::init_color(COLOR_HEADER_FOREGROUND_ODD, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_HEADER_BACKGROUND_ODD, 142 * 4, 161 * 4, 161 * 4);
+        ncurses::init_pair (COLOR_HEADER_PAIR_ODD, COLOR_HEADER_FOREGROUND_ODD, COLOR_HEADER_BACKGROUND_ODD);
+
+        ncurses::init_color(COLOR_VALUES_BACKGROUND_ODD, 0, 43 * 4, 54 * 4);
+        ncurses::init_color(COLOR_VALUES_FOREGROUND_ODD, 142 * 4, 161 * 4, 161 * 4);    
+        ncurses::init_pair (COLOR_VALUES_PAIR_ODD, COLOR_VALUES_FOREGROUND_ODD, COLOR_VALUES_BACKGROUND_ODD);
+        
+        ncurses::bkgd(' ' as ncurses::chtype | ncurses::COLOR_PAIR(COLOR_PAIR) as ncurses::chtype);
 
         let mut screen_height: i32 = 0;
         let mut screen_width: i32 = 0;
         ncurses::getmaxyx(ncurses::stdscr(), &mut screen_height, &mut screen_width);
+
+        ncurses::curs_set(ncurses::CURSOR_VISIBILITY::CURSOR_INVISIBLE);
 
         ncurses::clear();
 
@@ -303,21 +331,28 @@ impl CSVDisplay {
     }
 
     fn format_cell(&self, text: &str) -> String {
-        let mut cell = String::new();
+        let mut cell = String::with_capacity(self.column_width);
         let mut width = 0usize;
+        let graphemes: Vec<&str> = text.graphemes(true).collect();
+        let grapheme_count = graphemes.len();
 
-        for grapheme in text.graphemes(true) { // TODO make configurable
+        for grapheme in graphemes { // TODO make configurable
             if grapheme == "\n" || grapheme == "\r" {
                 break;
             }
 
-            if width == self.column_width - 2 {
-                cell.push_str(&format!("… "));
+            if width >= self.column_width - 2 && grapheme_count > self.column_width - 1 {
+                cell.push_str(&format!("…"));
                 break;   
             }
 
             cell.push_str(grapheme);
-            width += 1;         
+            width += 1;
+        }
+
+        while width < self.column_width {
+            cell.push(' ');
+            width += 1;
         }
         
         cell
@@ -339,21 +374,34 @@ impl CSVDisplay {
 
         let empty = String::new();
         for column_index in first_column..last_column {
-            if let Some(column) = self.csv.get_column(column_index) {
-                ncurses::attron(ncurses::A_BOLD());
-                ncurses::attron(ncurses::COLOR_PAIR(COLOR_HEADER_PAIR));
-                ncurses::mv(0, (column_index * self.column_width) as i32);
-                ncurses::addnstr(column.header.as_str(), self.column_width as i32);                
-                ncurses::attroff(ncurses::A_BOLD());
-                ncurses::attroff(ncurses::COLOR_PAIR(COLOR_HEADER_PAIR));
 
-                for line in 1..self.screen_height - 1 {
-                    let value = column.get_value(line - 1).unwrap_or(&empty);
+
+
+            if let Some(column) = self.csv.get_column(column_index) {
+
+                ncurses::attron(ncurses::A_BOLD());
+                
+                ncurses::attron(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_HEADER_PAIR_EVEN } else { COLOR_HEADER_PAIR_ODD }));
+                
+                ncurses::mv(0, (column_index * self.column_width) as i32);
+                ncurses::addnstr(self.format_cell(column.header.as_str()).as_str(), self.column_width as i32);                
+                ncurses::attroff(ncurses::A_BOLD());
+                
+                ncurses::attroff(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_HEADER_PAIR_EVEN } else { COLOR_HEADER_PAIR_ODD }));
+
+                ncurses::attron(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_VALUES_PAIR_EVEN } else { COLOR_VALUES_PAIR_ODD }));
+                for line in 1..(self.screen_height - 1) {
+                    let value = column.get_value(first_row + line - 1).unwrap_or(&empty);
                     ncurses::mv(line as i32, (column_index * self.column_width) as i32);
-                    ncurses::addnstr(self.format_cell(value).as_str(), self.column_width as i32);
+                    let string = self.format_cell(value);
+                    ncurses::addstr(string.as_str());
                 }
+                ncurses::attroff(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_VALUES_PAIR_EVEN } else { COLOR_VALUES_PAIR_ODD }));
             }
-        }       
+        }
+
+        ncurses::mv(self.screen_height as i32 - 1, 0);
+        ncurses::addstr(&format!("row: {}-{}, cols: {}-{}", first_row, last_row, first_column, last_column));
 
         while ncurses::getch() != 'q' as i32 { }
     }
@@ -381,7 +429,7 @@ fn main() {
     // }
 
     // //ncurses::attron(ncurses::A_BOLD());
-    // ncurses::addstr("<-Press Space->");
+    // ncurses::addstr("<-Press Space->");-+
     // while ncurses::getch() != ' ' as i32
     // { }
     //ncurses::attroff(ncurses::A_BOLD());
