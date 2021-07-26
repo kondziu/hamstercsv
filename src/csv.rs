@@ -1,7 +1,7 @@
 use unicode_segmentation::UnicodeSegmentation;
 
 const ELIPSIS: &'static str = "…";
-const PAGE: &'static str = "⇩";
+const PAGE: &'static str = "⤶"; //"▼";
 const PADDING: &'static str = " ";
 
 pub trait MaleableUnicode<'a>: Sized {
