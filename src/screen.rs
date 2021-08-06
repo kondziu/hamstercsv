@@ -1,11 +1,5 @@
 use crate::{cli::Options, csv::*};
 
-use byteorder;
-
-enum ColorScheme {
-
-}
-
 static COLOR_FOREGROUND: i16 = 24;
 static COLOR_BACKGROUND: i16 = 25;
 
@@ -127,7 +121,7 @@ impl CSVDisplay {
             println!("{}", last_row);
 
             let cell_dimensions = CellDimentions { width: self.column_width - 1, height: self.row_height };
-            let empty_cell = CSVItem::default().cut_or_pad_to(cell_dimensions, " ");
+            //let empty_cell = CSVItem::default().cut_or_pad_to(cell_dimensions, " ");
 
             for column_index in first_column..last_column {
 
@@ -147,10 +141,10 @@ impl CSVDisplay {
                     
                     let mut line = 1usize;                    
                     for row_index in first_row..last_row {                        
-                        let mut row_lines = 
+                        let row_lines = 
                             column.value(row_index)
                                 .map_or_else(Vec::new, |csv_item| {
-                                    csv_item.cut_or_pad_to(cell_dimensions, " ")
+                                    csv_item.cut_or_pad_to(cell_dimensions, PADDING)
                                 });
 
                         log::info!("line={:?} column_index={:?} row_index={:?} row_lines={:?}", line, column_index, row_index, row_lines);
@@ -158,7 +152,7 @@ impl CSVDisplay {
                         for row_line in row_lines {
                             ncurses::mv(line as i32, (column_index * self.column_width) as i32);
                             ncurses::addstr(row_line.join("").as_str());
-                            ncurses::addstr(" ");
+                            ncurses::addstr(PADDING);
                             line += 1;
                         }
                     } 
@@ -181,7 +175,7 @@ impl CSVDisplay {
             ncurses::addstr(&format!("row: {}-{}, cols: {}-{}", first_row, last_row, first_column, last_column));
 
             let input = ncurses::getch();                
-            let bytes: [u8; 4] = input.to_be_bytes();
+            //let bytes: [u8; 4] = input.to_be_bytes();
 
             //println!("{}")
             if input == 'q' as i32 {

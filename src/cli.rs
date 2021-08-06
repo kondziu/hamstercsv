@@ -5,15 +5,8 @@ use std::fmt::Display;
 use std::path::PathBuf;
 
 use csv;
-use ncurses;
 
 use clap::Clap;
-
-use crate::csv::*;
-use crate::screen::*;
-use unicode_segmentation::UnicodeSegmentation;
-
-use log;
 
 #[derive(Clap, Debug)]
 pub struct Options {

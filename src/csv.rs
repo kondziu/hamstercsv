@@ -1,8 +1,8 @@
 use unicode_segmentation::UnicodeSegmentation;
 
-const ELIPSIS: &'static str = "…";
-const PAGE: &'static str = "⤶"; //"▼";
-const PADDING: &'static str = " ";
+pub const ELIPSIS: &'static str = "…";
+pub const PAGE: &'static str = "⤶"; //"▼";
+pub const PADDING: &'static str = " ";
 
 pub trait MaleableUnicode<'a>: Sized {
     type Into;
@@ -187,9 +187,9 @@ impl CSVColumn {
         } 
         self.values.push(value);
     }
-    fn push_value(&mut self, value: CSVItem) {        
-        self.values.push(value);
-    }
+    // fn push_value(&mut self, value: CSVItem) {        
+    //     self.values.push(value);
+    // }
     pub fn value(&self, index: usize) -> Option<&CSVItem> {
         self.values.get(index)
     }    
@@ -247,7 +247,7 @@ impl<R> From<csv::Reader<R>> for CSVFile where R: std::io::Read {
             for (column_index, value) in row.into_iter().enumerate() {
                 log::info!("item col:{}: {}", column_index, value);
                 let item = CSVItem::from(value);
-                let mut column = csv.get_column_mut(column_index);
+                let column = csv.get_column_mut(column_index);
                 column.set_value(row_index, item);
             }            
         }

@@ -1,18 +1,8 @@
-use std::fs::File;
-use std::str::FromStr;
-use std::fmt::Formatter;
-use std::fmt::Display;
-use std::path::PathBuf;
-
-use csv;
-use ncurses;
-
 use clap::Clap;
 
 use hamstercsv::csv::*;
 use hamstercsv::screen::*;
 use hamstercsv::cli::*;
-use unicode_segmentation::UnicodeSegmentation;
 
 use log;
 
@@ -22,7 +12,7 @@ use log;
 
 
 fn main() {
-    simple_logging::log_to_file("hamstercsv.log", log::LevelFilter::Info);
+    simple_logging::log_to_file("hamstercsv.log", log::LevelFilter::Info).unwrap();
 
     let options = Options::parse();
     println!("...0");
