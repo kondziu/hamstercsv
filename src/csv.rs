@@ -21,7 +21,7 @@ impl<'a> MaleableUnicode<'a> for String {
 
         // Grab one extra grapheme to check if there are too many
         let mut graphemes: Vec<&str> = self.graphemes(true)
-            .take(10 + 1)
+            .take(width + 1)
             .collect();            
 
         let grapheme_count = graphemes.len();
@@ -93,7 +93,7 @@ impl<'a> MaleableUnicode<'a> for CSVItem {
             }
 
             // Append padding, as needed
-            for _ in 0..(dimensions.width - row_count) {            
+            for _ in 0..(dimensions.height - row_count) {            
                 rows.push(padding.clone());
             }
         }
