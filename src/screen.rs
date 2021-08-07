@@ -174,13 +174,36 @@ impl CSVDisplay {
             ncurses::mv(self.screen_height as i32 - 1, 0);
             ncurses::addstr(&format!("row: {}-{}, cols: {}-{}", first_row, last_row, first_column, last_column));
 
-            let input = ncurses::getch();                
+            let input = ncurses::get_wch().unwrap();
             //let bytes: [u8; 4] = input.to_be_bytes();
 
+            match input {
+                ncurses::WchResult::KeyCode(value) => {
+                    let bytes = value.to_be_bytes();                                        
+                    log::info!("key input: {:?}", bytes);
+                    match bytes {
+                        [0, 0, 1, 2] => (), // DOWN
+                        [0, 0, 1, 3] => (), // UP
+                        [0, 0, 1, 4] => (), // LEFT
+                        [0, 0, 1, 5] => (), // RIGHT
+                        _ => (),                        
+                    }
+                }
+                ncurses::WchResult::Char(value) => {
+                    let bytes = value.to_be_bytes();
+                    let characters = [bytes[0] as char, bytes[1] as char, bytes[2] as char, bytes[3] as char];
+                    log::info!("char input: {:?}", characters);
+                    match characters {
+                        [ '\0', '\0', '\0', 'q' ] => break,
+                        _ => (),
+                    }
+                }
+            }
+
             //println!("{}")
-            if input == 'q' as i32 {
-                break;
-            }           
+            // if input == 'q' as i32 {
+            //     break;
+            // }           
         }
     }
 }
