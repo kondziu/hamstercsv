@@ -196,6 +196,9 @@ impl CSVColumn {
     pub fn values(&self) -> impl Iterator<Item=&CSVItem> {
         self.values.iter()
     }
+    pub fn row_count(&self) -> usize {
+        self.values.len()
+    }
 }
 
 #[derive(Debug)]
@@ -225,6 +228,11 @@ impl CSVFile {
 
     pub fn column_count(&self) -> usize {
         self.columns.len()
+    }
+
+    pub fn row_count(&mut self) -> usize {
+        // TODO: thius is inefficient for large column counts.
+        self.columns.iter().map(|column| column.row_count()).max().unwrap_or(0)        
     }
 }
 
