@@ -15,11 +15,8 @@ fn main() {
     simple_logging::log_to_file("hamstercsv.log", log::LevelFilter::Info).unwrap();
 
     let options = Options::parse();
-    println!("...0");
     let csv = CSVFile::from(options.build_reader());
-    println!("...1");
     let mut display = CSVDisplay::from(csv, &options);    
-    println!("...2");
     display.run();
 
     // let column = csv.get_column(0).unwrap();

@@ -59,7 +59,7 @@ pub struct CSVItem {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct CellDimentions { pub width: usize, pub height: usize }
+pub struct CellDimentions { pub width: usize, pub height: usize } // TODO necessary?
 
 impl<'a> MaleableUnicode<'a> for CSVItem {
     type Into = Vec<Vec<&'a str>>;

@@ -36,6 +36,8 @@ pub struct CSVDisplay {
 
     screen_height: usize, 
     screen_width: usize,
+
+    cell_dimensions: CellDimentions,
     
     csv: CSVFile,    
 }
@@ -93,13 +95,15 @@ impl CSVDisplay {
 
             screen_height: 0,
             screen_width: 0,
+
+            cell_dimensions: CellDimentions { height: 0, width: 0 }
         };
 
         display.measure_screen();
         display
     }
 
-    pub fn measure_screen(&mut self) -> bool {
+    fn measure_screen(&mut self) -> bool {
         let mut screen_height: i32 = 0;
         let mut screen_width: i32 = 0;
 
@@ -114,74 +118,101 @@ impl CSVDisplay {
         }
     }
 
+    fn figure_out_which_rows_to_display(&mut self) -> () {
+        self.visible_rows = self.screen_height / self.row_height - 1 /* headers */ - 1 /* status bar */; 
+        self.last_row = std::cmp::min(self.first_row + self.visible_rows, self.csv.row_count());
+
+        log::info!("Displaying rows: {}..{} (total: {} rows)", 
+                   self.first_row, self.last_row, self.csv.row_count());
+    }
+
+    fn figure_out_which_columns_to_display(&mut self) -> () {
+        self.visible_columns = self.screen_width / self.column_width;
+        self.last_column = self.first_column + self.visible_columns;
+
+        log::info!("Displaying columns: {}..{} (total: {} columns", 
+                   self.first_column, self.last_column, self.csv.column_count());
+    }
+
+    fn figure_out_cell_dimensions(&mut self) -> () {
+        self.cell_dimensions = CellDimentions { width: self.column_width - 1, height: self.row_height };
+    }
+
+    fn display_column_header(&self, column_index: usize, column: &CSVColumn) {       
+
+        let text = column.header().to_owned()
+            .cut_or_pad_to(self.cell_dimensions.width, " ")
+            .join("");
+
+        let x = ((column_index - self.first_column) * self.column_width) as i32;
+        let y = 0;
+
+        let is_even = column_index % 2 == 0;
+        let colors = if is_even { COLOR_HEADER_PAIR_EVEN } else { COLOR_HEADER_PAIR_ODD };
+
+        log::info!("display header, column_index: {}, color: {}", column_index, colors);
+
+        ncurses::attron(ncurses::A_BOLD());                
+        ncurses::attron(ncurses::COLOR_PAIR(colors));        
+        ncurses::mv(y, x);        
+        ncurses::addstr(text.as_str());
+        ncurses::addstr(" ");                            
+        ncurses::attroff(ncurses::A_BOLD());                
+        ncurses::attroff(ncurses::COLOR_PAIR(colors));
+    }
+
+    fn display_column_values(&self, column_index: usize, column: &CSVColumn) -> () {
+
+        let is_even = column_index % 2 == 0;
+        let colors = if is_even { COLOR_VALUES_PAIR_EVEN } else { COLOR_VALUES_PAIR_ODD };
+
+        let cells = (self.first_row..self.last_row)
+            .map(|row_index| {
+                column.value(row_index)
+                    .map_or_else(Vec::new, |csv_item| {
+                        csv_item.cut_or_pad_to(self.cell_dimensions, PADDING)
+                            .into_iter()
+                            .map(|vector| {
+                                vector.join("")
+                            }).collect()
+                    })                    
+            });
+
+        ncurses::attron(ncurses::COLOR_PAIR(colors));
+        
+        let mut y = 1;                
+        for row_lines in cells {
+            let x = ((column_index - self.first_column) * self.column_width) as i32;
+
+            for row_line in row_lines {  
+                ncurses::mv(y, x);
+                ncurses::addstr(row_line.as_str());
+                ncurses::addstr(PADDING);
+
+                y += 1;
+            }
+        } 
+
+        ncurses::attroff(ncurses::COLOR_PAIR(colors));
+    }
+
     pub fn run(&mut self) {
 
         loop {
 
             self.measure_screen();
-
-            self.visible_columns = self.screen_width / self.column_width;
-            self.visible_rows = self.screen_height / self.row_height - 1 /* headers */ - 1 /* status bar */; 
-
-            self.last_column = self.first_column + self.visible_columns;
-
-            self.last_row = std::cmp::min(self.first_row + self.visible_rows, self.csv.row_count());
-
-            //println!("{}", first_row);
-            //println!("{}", last_row);
-
-            log::info!("rows: {}..{}/{}, cols: {}..{}/{}", self.first_row, self.last_row, self.csv.row_count(), self.first_column, self.last_column, self.csv.column_count(),);
-
-            let cell_dimensions = CellDimentions { width: self.column_width - 1, height: self.row_height };
-            //let empty_cell = CSVItem::default().cut_or_pad_to(cell_dimensions, " ");
+            self.figure_out_which_rows_to_display();
+            self.figure_out_which_columns_to_display();
+            self.figure_out_cell_dimensions();
+                        
 
             for column_index in self.first_column..self.last_column {
 
                 log::info!("column_index: {}", column_index);
 
                 if let Some(column) = self.csv.get_column(column_index) {
-
-                    ncurses::attron(ncurses::A_BOLD());                
-                    ncurses::attron(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_HEADER_PAIR_EVEN } else { COLOR_HEADER_PAIR_ODD }));
-                    
-                    ncurses::mv(0, ((column_index - self.first_column) * self.column_width) as i32);
-                    
-                    ncurses::addstr(column.header().to_owned().cut_or_pad_to(cell_dimensions.width, " ").join("").as_str());
-                    ncurses::addstr(" ");
-                    
-                    ncurses::attroff(ncurses::A_BOLD());                
-                    ncurses::attroff(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_HEADER_PAIR_EVEN } else { COLOR_HEADER_PAIR_ODD }));
-                    ncurses::attron(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_VALUES_PAIR_EVEN } else { COLOR_VALUES_PAIR_ODD }));
-                    
-                    let mut line = 1usize;                    
-                    for row_index in self.first_row..self.last_row {                        
-                        let row_lines = 
-                            column.value(row_index)
-                                .map_or_else(Vec::new, |csv_item| {
-                                    csv_item.cut_or_pad_to(cell_dimensions, PADDING)
-                                });
-
-                        log::info!("line={:?} column_index={:?} row_index={:?} row_lines={:?}", line, column_index, row_index, row_lines);
-
-                        for row_line in row_lines {
-                            ncurses::mv(line as i32, ((column_index - self.first_column) * self.column_width) as i32);
-                            ncurses::addstr(row_line.join("").as_str());
-                            ncurses::addstr(PADDING);
-                            line += 1;
-                        }
-                    } 
-
-                    // for line in 1..(self.screen_height - 1) {
-                    //     let rows = column.value(first_row + line - 1)
-                    //         .map_or_else(Vec::new, |item| item.cut_or_pad_to(cell_dimensions, " "));
-                    //     ncurses::mv(line as i32, (column_index * self.column_width) as i32);
-                    //     for row in rows {
-                    //         ncurses::addstr(row.join("").as_str());
-                    //         ncurses::addstr(" ");
-                    //         //ncurses::addstr("value");
-                    //     }                    
-                    // }
-                    ncurses::attroff(ncurses::COLOR_PAIR(if column_index % 2 == 0 { COLOR_VALUES_PAIR_EVEN } else { COLOR_VALUES_PAIR_ODD }));
+                    self.display_column_header(column_index, column);
+                    self.display_column_values(column_index, column);
                 }
             }
 
@@ -189,7 +220,6 @@ impl CSVDisplay {
             ncurses::addstr(&format!("row: {}-{}, cols: {}-{}", self.first_row, self.last_row, self.first_column, self.last_column));
 
             let input = ncurses::get_wch().unwrap();
-            //let bytes: [u8; 4] = input.to_be_bytes();
 
             match input {
                 ncurses::WchResult::KeyCode(value) => {
@@ -212,12 +242,7 @@ impl CSVDisplay {
                         _ => (),
                     }
                 }
-            }
-
-            //println!("{}")
-            // if input == 'q' as i32 {
-            //     break;
-            // }           
+            }        
         }
     }
 }
