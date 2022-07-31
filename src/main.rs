@@ -1,11 +1,9 @@
-use clap::Clap;
-
+use hamstercsv::config::*;
 use hamstercsv::csv::*;
 use hamstercsv::screen::*;
-use hamstercsv::cli::*;
+// use hamstercsv::_cli::*;
 
 use log;
-
 
 // TODO add `about(...)`s
 // TODO maybe stdin support
@@ -14,10 +12,10 @@ use log;
 fn main() {
     simple_logging::log_to_file("hamstercsv.log", log::LevelFilter::Info).unwrap();
 
-    let options = Options::parse();
-    let csv = CSVFile::from(options.build_reader());
-    let mut display = CSVDisplay::from(csv, &options);    
-    display.run();
+    let config = Config::parse();
+    // let csv = CSVFile::from(options.build_reader());
+    // let mut display = CSVDisplay::from(csv, &options);    
+    // display.run();
 
     // let column = csv.get_column(0).unwrap();
 

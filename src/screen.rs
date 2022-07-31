@@ -1,4 +1,4 @@
-use crate::{cli::Options, csv::*};
+use crate::{csv::*};
 
 static COLOR_FOREGROUND: i16 = 24;
 static COLOR_BACKGROUND: i16 = 25;
@@ -42,9 +42,9 @@ pub struct CSVDisplay {
     csv: CSVFile,    
 }
 impl CSVDisplay {
-    pub fn from(csv: CSVFile, options: &Options) -> Self {
+    pub fn from(csv: CSVFile, options: &()) -> Self {
 
-        ncurses::setlocale(ncurses::LcCategory::all, options.locale.as_str()); // TODO is this actually configurable to any reasonable extent?
+        ncurses::setlocale(ncurses::LcCategory::all, ""/*options.locale.as_str()*/); // TODO is this actually configurable to any reasonable extent?
 
         ncurses::initscr();
         ncurses::keypad(ncurses::stdscr(), true);

@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 csv = "1.1.6"
-clap = "3.0.0-beta.2"
+clap = { version = "3", features = ["derive", "cargo", "unicode", "wrap_help"] }
 ncurses = { version = "5.101.0", features = ["wide"] }
 serde = "1.0.126"
 unicode-segmentation = "1.8.0"

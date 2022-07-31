@@ -1,3 +1,4 @@
 pub mod csv;
 pub mod screen;
-pub mod cli;
+pub mod config;
+pub mod utils;
