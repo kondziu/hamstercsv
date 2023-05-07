@@ -2,7 +2,7 @@
 pub mod config;
 pub mod data;
 pub mod utils;
-
+pub mod display;
 
 use std::convert::TryFrom;
 

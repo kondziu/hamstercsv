@@ -9,7 +9,8 @@ edition = "2018"
 [dependencies]
 csv = "1.1"
 clap = { version = "4", features = ["derive", "cargo", "unicode", "wrap_help", "string"] }
-ncurses = { version = "5.101", features = ["wide"] }
+# ncurses = { version = "5.101", features = ["wide"] }
+pancurses = { version = "0.17", features = ["wide"] }
 serde = "1.0"
 unicode-segmentation = "1.8"
 log = "0.4"

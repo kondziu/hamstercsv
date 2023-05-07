@@ -1,4 +1,4 @@
-use crate::{csv::*};
+use crate::csv::*;
 
 static COLOR_FOREGROUND: i16 = 24;
 static COLOR_BACKGROUND: i16 = 25;

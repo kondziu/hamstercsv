@@ -34,6 +34,14 @@ pub struct Aesthetics {
     #[arg(long, default_value("#646464"))]
     /// Color used for unfilled cells: single hex or rgb color value
     bg_color: Rgb,
+
+    #[arg(long, default_value_t = 10)]
+    /// Width of displayed CSV columns (in characters)
+    column_width: u8,
+
+    #[arg(long, default_value_t = 2)]
+    /// Height of displayed CSV rows (in lines)
+    row_height: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -94,6 +102,11 @@ impl From<&str> for Rgb {
 impl Rgb {
     pub fn parser(value: &str) -> Result<Vec<Rgb>, RgbError> {
         value.split(':').into_iter().map(Rgb::from_str).collect()
+    }
+
+    pub fn components(&self) -> (u8,u8,u8) {
+        let (r,g,b,_) = self.0.to_linear_rgba_u8();
+        (r,g,b)
     }
 }
 
