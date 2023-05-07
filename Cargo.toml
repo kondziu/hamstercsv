@@ -1,17 +1,23 @@
 [package]
 name = "hamstercsv"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Konrad Siek <konrad.siek@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-csv = "1.1.6"
-clap = { version = "3", features = ["derive", "cargo", "unicode", "wrap_help"] }
-ncurses = { version = "5.101.0", features = ["wide"] }
-serde = "1.0.126"
-unicode-segmentation = "1.8.0"
-log = "0.4.14"
-simple-logging = "2.0.2"
-byteorder = "1.4.3"
+csv = "1.1"
+clap = { version = "4", features = ["derive", "cargo", "unicode", "wrap_help", "string"] }
+ncurses = { version = "5.101", features = ["wide"] }
+serde = "1.0"
+unicode-segmentation = "1.8"
+log = "0.4"
+simple-logging = "2.0"
+byteorder = "1.4"
+
+# Get default locale from OS
+current_locale = "0.1"
+
+# Parse color definitions like rgb(…)
+csscolorparser = "0.6"

@@ -1,7 +1,11 @@
-use hamstercsv::config::*;
-use hamstercsv::csv::*;
-use hamstercsv::screen::*;
+// use std::convert::TryFrom;
+
+// use hamstercsv::config::*;
+// use hamstercsv::data::*;
+
 // use hamstercsv::_cli::*;
+// use hamstercsv::_csv::*;
+// use hamstercsv::screen::*;
 
 use log;
 
@@ -12,8 +16,14 @@ use log;
 fn main() {
     simple_logging::log_to_file("hamstercsv.log", log::LevelFilter::Info).unwrap();
 
-    let config = Config::parse();
-    // let csv = CSVFile::from(options.build_reader());
+    let config = hamstercsv::HamsterCsv::read_config();
+
+    println!("{:?}\n\n", &config);
+
+    let csv = hamstercsv::HamsterCsv::read_csv(&config).unwrap();
+
+    println!("{:?}\n\n", &csv);
+
     // let mut display = CSVDisplay::from(csv, &options);    
     // display.run();
 
