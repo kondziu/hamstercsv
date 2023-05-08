@@ -26,3 +26,8 @@ pub struct Config {
     pub path: PathBuf,
 }
 
+impl Config {
+    pub fn path_str(&self) -> &str {
+        self.path.as_os_str().to_str().unwrap()
+    }
+}

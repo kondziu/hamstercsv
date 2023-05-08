@@ -32,3 +32,25 @@ impl Check for bool {
         *self
     }
 }
+
+pub(crate) trait ToResult<T, E> {
+    // Add an erro message to an Option type: convert an Option<T> type into a
+    // Result<T, E>
+    fn into_result<F>(self, f: F) -> Result<T, E> where F: FnOnce() -> E;
+}
+
+impl<T, E> ToResult<T, E> for Option<T> {
+    fn into_result<F>(self, f: F) -> Result<T, E> where F: FnOnce() -> E{
+        self.map_or_else(|| Err(f()), |v| Ok(v))
+    }
+}
+
+pub(crate) trait WrapError<T, E> {
+    fn wrap_error(self) -> Result<T, E>;
+}
+
+impl<T, Es, Et> WrapError<T, Et> for Result<T, Es> where Et: From<Es> {
+    fn wrap_error(self) -> Result<T, Et> {
+        self.map_err(|e| e.into())
+    }
+}

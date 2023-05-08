@@ -1,12 +1,8 @@
-use std::borrow::Borrow;
-use std::convert::{TryFrom, Infallible};
-use std::ffi::{OsString, OsStr};
+use std::cmp::max;
 use std::fmt::Display;
 use std::str::FromStr;
 
-use csscolorparser::{Color, ParseColorError};
-
-use crate::utils::errors::*;
+use csscolorparser::Color;
 
 #[derive(clap::Args, Clone, Debug)]
 /// Display-specific configuration options
@@ -42,6 +38,57 @@ pub struct Aesthetics {
     #[arg(long, default_value_t = 2)]
     /// Height of displayed CSV rows (in lines)
     row_height: u8,
+}
+
+impl Aesthetics {
+    pub fn basic_color<'a>(&'a self) -> RgbPair<'a> {
+        RgbPair { name: 
+            "basic".to_owned(),
+            fg: &self.bg_color, 
+            bg: &self.bg_color 
+        }
+    }
+
+    pub fn header_colors<'a>(&'a self) -> Vec<RgbPair<'a>>{
+        RgbPair::bind(
+            |i| format!("header_{}", i), 
+            &self.header_fg_colors, 
+            &self.header_bg_colors
+        )
+    }
+
+    pub fn value_colors<'a>(&'a self) -> Vec<RgbPair<'a>>{
+        RgbPair::bind(
+            |i| format!("value_{}", i), 
+            &self.value_fg_colors, 
+            &self.value_bg_colors
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct RgbPair<'a> { pub name: String, pub fg: &'a Rgb, pub bg: &'a Rgb }
+
+impl<'a> RgbPair<'a> {
+    pub fn new(name: impl Into<String>, fg: &'a Rgb, bg: &'a Rgb) -> Self {
+        RgbPair { name: name.into(), fg, bg }
+    }
+
+    pub fn bind<'b, F>(name_generator: F, fg_vector: &'b Vec<Rgb>, bg_vector: &'b Vec<Rgb>)  -> Vec<RgbPair<'b>> where F: Fn(usize) -> String {
+        let mut pairs = Vec::new();
+        let bg_length = bg_vector.len();
+        let fg_length = fg_vector.len();
+        let range = 0..max(fg_vector.len(), bg_vector.len());
+
+        for i in range {
+            let bg_color = bg_vector.get(i % bg_length).unwrap();
+            let fg_color = fg_vector.get(i % bg_length).unwrap();
+            let pair = RgbPair::new(name_generator(i), fg_color, bg_color);
+            pairs.push(pair)
+        }
+
+        pairs
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
