@@ -10,34 +10,34 @@ pub struct Aesthetics {
     #[arg(long, default_value("#002B36"), num_args= 1.., value_delimiter = ':')]
     /// Foreground/text colors for header columns: colon-separated list of hex or rgb
     /// color values, colors repeat periodially for consecutive columns)
-    header_fg_colors: Vec<Rgb>,
+    pub(crate) header_fg_colors: Vec<Rgb>,
 
     #[arg(long, default_value("#8EA1A1"), num_args= 1.., value_delimiter = ':')]
     /// Background colors for header columns: colon-separated list of hex or rgb
     /// color values, colors repeat periodially for consecutive columns)
-    header_bg_colors: Vec<Rgb>,
+    pub(crate) header_bg_colors: Vec<Rgb>,
 
     #[arg(long, default_value("#8EA1A1"), num_args= 1.., value_delimiter = ':')]
     /// Foreground/text for value columns: colon-separated list of hex or rgb
     /// color values, colors repeat periodially for consecutive columns)
-    value_fg_colors: Vec<Rgb>,
+    pub(crate) value_fg_colors: Vec<Rgb>,
 
     #[arg(long, default_values = vec!["#002B36", "#72A0C1"], num_args= 1.., value_delimiter = ':')]
     /// Background for value columns: colon-separated list of hex or rgb
     /// color values, colors repeat periodially for consecutive columns)
-    value_bg_colors: Vec<Rgb>,
+    pub(crate) value_bg_colors: Vec<Rgb>,
 
     #[arg(long, default_value("#646464"))]
     /// Color used for unfilled cells: single hex or rgb color value
-    bg_color: Rgb,
+    pub(crate) bg_color: Rgb,
 
     #[arg(long, default_value_t = 10)]
     /// Width of displayed CSV columns (in characters)
-    column_width: u8,
+    pub(crate) column_width: u8,
 
     #[arg(long, default_value_t = 2)]
     /// Height of displayed CSV rows (in lines)
-    row_height: u8,
+    pub(crate) row_height: u8,
 }
 
 impl Aesthetics {
@@ -78,11 +78,11 @@ impl<'a> RgbPair<'a> {
         let mut pairs = Vec::new();
         let bg_length = bg_vector.len();
         let fg_length = fg_vector.len();
-        let range = 0..max(fg_vector.len(), bg_vector.len());
+        let range = 0..max(fg_length, bg_length);
 
         for i in range {
             let bg_color = bg_vector.get(i % bg_length).unwrap();
-            let fg_color = fg_vector.get(i % bg_length).unwrap();
+            let fg_color = fg_vector.get(i % fg_length).unwrap();
             let pair = RgbPair::new(name_generator(i), fg_color, bg_color);
             pairs.push(pair)
         }

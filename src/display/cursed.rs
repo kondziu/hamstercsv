@@ -4,6 +4,7 @@ use pancurses::{set_title, init_color, init_pair};
 
 use crate::{config::{Rgb, RgbPair}, utils::errors::{OrFailWith, ToResult}};
 
+#[derive(Debug)]
 pub struct Window {
     window: pancurses::Window,
     color_sequence: Sequence,
@@ -122,8 +123,28 @@ impl Window {
         self.window.clear();
         self
     }
+
+    pub fn height(&self) -> usize {
+        self.window.get_max_y() as usize
+    }
+
+    pub fn width(&self) -> usize {
+        self.window.get_max_x() as usize
+    }
+
+    pub fn height_and_width(&self) -> (usize, usize) {
+        let (y, x) = self.window.get_max_yx();
+        (y as usize, x as usize)
+    }
 }
 
+impl Drop for Window {
+    fn drop(&mut self) {
+        pancurses::endwin();
+    }
+}
+
+#[derive(Debug)]
 struct ColorPair {
     _fg: u8,
     _bg: u8,
@@ -136,6 +157,7 @@ impl ColorPair {
     }
 }
 
+#[derive(Clone, Debug)]
 struct Sequence {
     cursor: u8,
 }
@@ -145,7 +167,7 @@ impl Sequence {
         Sequence { cursor: 0 }
     }
     pub fn next(&mut self) -> Result<u8, CursedError> {
-        { self.cursor == u8::MAX }.or_fail_with(|| CursedError::SequenceExhausted(self.cursor) )?;
+        { self.cursor < u8::MAX }.or_fail_with(|| CursedError::SequenceExhausted(self.cursor) )?;
         let value = self.cursor;
         self.cursor += 1;
         Ok(value)

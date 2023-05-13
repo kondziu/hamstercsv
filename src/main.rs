@@ -18,13 +18,16 @@ fn main() {
 
     let config = hamstercsv::HamsterCsv::read_config();
 
-    println!("{:?}\n\n", &config);
+    println!("Config: {:?}\n\n", &config);
 
     let csv = hamstercsv::HamsterCsv::read_csv(&config).unwrap();
 
-    println!("{:?}\n\n", &csv);
+    println!("Csv: {:?}\n\n", &csv);
 
-    // let mut display = CSVDisplay::from(csv, &options);    
+    let display = hamstercsv::display::CsvDisplay::new(&config, &csv).unwrap();
+
+    println!("CsvDisplay: {:?}\n\n", &display);
+
     // display.run();
 
     // let column = csv.get_column(0).unwrap();
